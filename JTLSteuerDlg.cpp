@@ -7,7 +7,7 @@
 #include "JTLSteuerDlg.h"
 #include "afxdialogex.h"
 #include "atlpath.h"
-#include "..\JtlImport\CSVFile.h"
+#include "CSVFile.h"
 
 
 bool  g_fOSS = true;

@@ -101,7 +101,7 @@
     <None Include="res\JTLSteuer.rc2" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\JtlImport\CSVFile.h" />
+    <ClInclude Include="CSVFile.h" />
     <ClInclude Include="JTLSteuer.h" />
     <ClInclude Include="JTLSteuerDlg.h" />
     <ClInclude Include="Resource.h" />
@@ -109,7 +109,7 @@
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\JtlImport\jtlcsv.cpp" />
+    <ClCompile Include="jtlcsv.cpp" />
     <ClCompile Include="JTLSteuer.cpp" />
     <ClCompile Include="JTLSteuerDlg.cpp" />
     <ClCompile Include="stdafx.cpp">

@@ -39,7 +39,7 @@
     <ClInclude Include="Resource.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
-    <ClInclude Include="..\JtlImport\CSVFile.h">
+    <ClInclude Include="CSVFile.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>
@@ -53,7 +53,7 @@
     <ClCompile Include="stdafx.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
-    <ClCompile Include="..\JtlImport\jtlcsv.cpp">
+    <ClCompile Include="jtlcsv.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
   </ItemGroup>

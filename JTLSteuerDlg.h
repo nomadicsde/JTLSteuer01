@@ -306,7 +306,7 @@ class CRechnung
         m_faktor = 1;              m_bestellNummer = ""; m_extBestellnummer = ""; m_dfBetragRechnung   = 0;     m_dfBetragRechnungKorr = 0;     m_waehrungRechnung     = "";    m_typ = unknown;                     m_gutschriftNummer            = "";    m_dfBetragGutschriftWawi = 0; 
         m_waehrungGutschrift = ""; m_platform = "";      m_szRechnungsNr = "";    m_fHasGutschriftWawi = false; m_fAmazonNeuRechnung   = false; m_fAmazonNeuGutschrift = false; m_fAmazonDiffBetragRechnung = false; m_fAmazonDiffBetragGutschrift = false; m_dfRechnungSumme    = 0;  m_dfGutschriftSumme = 0;
         m_dfBetragGutschriftOrg = 0; m_szRechnungEmpf = "", m_szDatum = ""; m_szUmst = "19.00";                 m_countGutschriftWawi  = 0; m_dfBetragGutschriftAmazon = 0;
-        m_countGutschriftAmazon = 0; m_fHasGutschriftAmazon = false; m_szDatumGutschriftAmazon = ""; m_dfKontrollSumme = 0; m_ISO = "";
+        m_countGutschriftAmazon = 0; m_fHasGutschriftAmazon = false; m_szDatumGutschriftAmazon = ""; m_dfKontrollSumme = 0; m_ISO = ""; m_dfAmazonKorrekturBetrag = 0;
     }
 
   public:
@@ -325,6 +325,7 @@ class CRechnung
     bool                 m_fHasGutschriftWawi;
     double               m_dfBetragGutschriftWawi;      // Summer aller Gutschriften
     double               m_dfBetragGutschriftOrg;       // entspricht m_dfBetragGutschriftWawi
+    double               m_dfAmazonKorrekturBetrag;     // Hilfsvariable bei OSS
     int                  m_countGutschriftWawi;
 
 
@@ -404,6 +405,28 @@ public:
 
     bool                    m_fAmazonDiffBetragGutschrift;
 };
+
+#define OSS_DATA_HEADER  "\"Erstelldatum Rechnung\";\"Rechnungsempfänger\";\"Rechnungsnummer\";\"Externe Bestellnummer\";\"Betrag Brutto\";\"Betrag Netto\";\"Betrag UmSt.\";\"Land\";\"Währung\";\"Umsatsteuer-Satz\";\"Konto\""
+#define OSS_DATA_FORMAT  "\r\n\"%s\";\"%s\";\"%s\";\"%s\";\"%s\";\"%s\";\"%s\";\"%s\";\"%s\";\"%s\";\"%s\""
+
+class COSSData
+{
+    public:
+        COSSData();
+
+    public:
+        void Reset(void);
+
+        void AddLine(CRechnung* pRechnung, bool fAmazon = false);
+        void AddLine(CGutschrift* pGutschrift);
+
+        bool WriteData(CDialog* pParent, LPCSTR lpszFilenname);
+
+    protected:
+        CString m_szTotalLines;
+        int     m_totalLines;
+};
+
 
 typedef CMap<CString, LPCSTR, CRechnung, CRechnung> CMapRechnung;
 typedef CMap < CString, LPCSTR, CGutschrift, CGutschrift> CMapGutschrift;
@@ -511,6 +534,9 @@ protected:
   CStringArray           m_arrGuKorr;
   CMapStringToInt        m_monthMap;
   CString                m_arrSummery[CRechnung::countPlatform];
+
+  COSSData               m_ossData;
+
 public:
   afx_msg void OnBnClickedCancel();
   COleDateTime m_dateVon;

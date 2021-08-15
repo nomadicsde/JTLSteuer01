@@ -1471,6 +1471,11 @@ void CJTLSteuerDlg::StoreResults(void)
 
     ErstelleEasyCashKorrekturImport(m_storePath, m_storeTitle);
 
+    // OSS-Daten ...
+    CString szNewFilePath;
+    szNewFilePath.Format("%s\\%s_OSS_Final.csv", m_storePath, m_storeTitle);
+    m_ossData.WriteData(this, szNewFilePath);
+
 }
 
 
@@ -1564,6 +1569,9 @@ void CJTLSteuerDlg::ErstelleEasyCashRechnungen(LPCSTR lpszPath, LPCSTR szFileTit
                 // if (pRechnung->m_ISO.GetLength() > 0 && pRechnung->m_ISO != "DE")
                 if (CheckOSS(pRechnung))
                 {
+                    
+                    m_ossData.AddLine(pRechnung);
+                    
                     umSt = (int)((100.0 * fUmst) + 0.05);
                     szText.Format("%s (%s %s %%)", pRechnung->m_szRechnungEmpf, pRechnung->m_ISO, pRechnung->m_szUmst);
                     if (0 != umSt)
@@ -1829,7 +1837,10 @@ void CJTLSteuerDlg::ErstelleEasyCashGutschriften(LPCSTR lpszPath, LPCSTR szFileT
                     // if (pGutschrift->m_ISO.GetLength() > 0 && pGutschrift->m_ISO != "DE")
                     if (CheckOSS(pGutschrift))
                     {
-                      umSt = (int)((100.0 * fUmst) + 0.05);
+                      
+                        m_ossData.AddLine(pGutschrift);
+                        
+                        umSt = (int)((100.0 * fUmst) + 0.05);
                         if (0 != umSt)
                         {
                             dfNetto = betragGutschrift / (1.0 + fUmst/100.0);
@@ -2055,6 +2066,10 @@ void CJTLSteuerDlg::ErstelleEasyCashKorrekturImport(LPCSTR lpszPath, LPCSTR szFl
                                 // if (rech.m_ISO.GetLength() > 0 && rech.m_ISO != "DE")
                                 if (CheckOSS(&rech))
                                 {
+                                    
+                                    rech.m_dfAmazonKorrekturBetrag = dfBetrag / 100.0;
+                                    m_ossData.AddLine(&rech, true);
+
                                     umSt = (int)((100.0 * fUmst) + 0.05);
                                     szText.Format("%s (%s %s %%)", rech.m_szRechnungEmpf, rech.m_ISO, szUmst);
                                     if (0 != umSt)
@@ -2471,4 +2486,93 @@ void CJTLSteuerDlg::SetButtons()
 }
 
 
+COSSData::COSSData()
+{
+    Reset();
+}
 
+void COSSData::Reset(void)
+{
+    m_szTotalLines = OSS_DATA_HEADER;
+    m_totalLines = 0;
+}
+
+void COSSData::AddLine(CRechnung* pRechnung, bool fAmazon)
+{
+    CString szBrutto, szNetto, szUmst, szLine, szKonto;
+    double  dfNetto, dfBrutto, dfUmst, fUst;
+
+    fUst    = atof(pRechnung->m_szUmst);
+    szKonto = (LPCSTR)(fAmazon ? "Amazon-Korrektur" : "Rechnung");
+    dfBrutto = fAmazon ? -pRechnung->m_dfAmazonKorrekturBetrag : pRechnung->m_dfBetragRechnung;
+    dfNetto  = dfBrutto / (1.0 + fUst / 100.0);
+    dfUmst   = dfBrutto - dfNetto;
+
+    szBrutto.Format("%02.2f", dfBrutto);
+    szNetto.Format("%02.2f", dfNetto);
+    szUmst.Format("%02.2f", dfUmst);
+
+    szBrutto.Replace(".", ",");
+    szNetto.Replace(".", ",");
+    szUmst.Replace(".", ",");
+    
+ 
+    szLine.Format(OSS_DATA_FORMAT, pRechnung->m_szDatum, pRechnung->m_szRechnungEmpf, pRechnung->m_szRechnungsNr, pRechnung->m_extBestellnummer, szBrutto, szNetto, szUmst, pRechnung->m_ISO, pRechnung->m_waehrungRechnung, pRechnung->m_szUmst, szKonto);
+    m_szTotalLines += szLine;
+
+    m_totalLines += 1;
+}
+
+void COSSData::AddLine(CGutschrift* pGutschrift)
+{
+    CString szBrutto, szNetto, szUmst, szLine, szKonto;
+    double  dfNetto, dfUmst, fUst;
+
+    fUst = atof(pGutschrift->m_szUmst);
+    dfNetto = pGutschrift->m_dfBetragGutschrift / (1.0 + fUst / 100.0);
+    dfUmst = pGutschrift->m_dfBetragGutschrift - dfNetto;
+
+    szBrutto.Format("%02.2f", pGutschrift->m_dfBetragGutschrift);
+    szNetto.Format("%02.2f", dfNetto);
+    szUmst.Format("%02.2f", dfUmst);
+
+    szBrutto.Replace(".", ",");
+    szNetto.Replace(".", ",");
+    szUmst.Replace(".", ",");
+
+    szKonto = "Gutschrift";
+
+    szLine.Format(OSS_DATA_FORMAT, pGutschrift->m_szDatum, pGutschrift->m_empfaenger, pGutschrift->m_gutschriftNummer, pGutschrift->m_extBestellNummer, szBrutto, szNetto, szUmst, pGutschrift->m_ISO, pGutschrift->m_waehrungGutschrift, pGutschrift->m_szUmst, szKonto);
+    m_szTotalLines += szLine;
+
+    m_totalLines += 1;
+}
+
+
+bool COSSData::WriteData(CDialog *pParent, LPCSTR lpszFilenname)
+{
+    CFile fl;
+    bool  fReturn = false;
+    
+    CString szMessage;
+    szMessage.Format("Oss-Daten für Excel\nAnzahl der Zeilen: %d\nLänge: %d Bytes", m_totalLines, m_szTotalLines.GetLength());
+    pParent->MessageBox(szMessage, "OSS-Daten", MB_OK);
+    
+    if (fl.Open(lpszFilenname, CFile::modeCreate | CFile::modeWrite))
+    {
+        int len = m_szTotalLines.GetLength();
+        TRY
+        {
+            fl.Write((LPCSTR)m_szTotalLines, len);
+            fReturn = true;
+        }
+        CATCH(CException, pE)
+        {
+            ;
+        }
+        END_CATCH
+        fl.Close();
+    }
+    
+    return fReturn;
+}

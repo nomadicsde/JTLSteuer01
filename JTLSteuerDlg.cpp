@@ -519,14 +519,14 @@ void CJTLSteuerDlg::ResetMapGutschriftenWawi(void)
 
 void CJTLSteuerDlg::ResetMapGutschriftenAmazon(void)
 {
-    for (CMapGutschriftArray::CPair* pCurVal = m_mapArrRechnungGutschriftWawi.PGetFirstAssoc(); pCurVal != NULL; pCurVal = m_mapArrRechnungGutschriftWawi.PGetNextAssoc(pCurVal))
+    for (CMapGutschriftArray::CPair* pCurVal = m_mapArrRechnungGutschriftAmazon.PGetFirstAssoc(); pCurVal != NULL; pCurVal = m_mapArrRechnungGutschriftAmazon.PGetNextAssoc(pCurVal))
         delete pCurVal->value;
-    m_mapArrRechnungGutschriftWawi.RemoveAll();
+    m_mapArrRechnungGutschriftAmazon.RemoveAll();
 }
 
 bool CJTLSteuerDlg::DoReadGutschriften(LPCSTR lpszFilePath, LPCSTR lpsPath, LPCSTR lpszName)
 {
-  CArrGutschrift *parrRechnungGutschrift;
+  CArrGutschrift* parrRechnungGutschrift;
   CStringArray    arrFields;
   CCSVFile        csv(lpszFilePath);
   CRechnung       rechnung;
@@ -620,6 +620,7 @@ bool CJTLSteuerDlg::DoReadGutschriften(LPCSTR lpszFilePath, LPCSTR lpsPath, LPCS
       gutschrift.Reset();
       
       gutschrift.m_rechnungsNummer        = rechnung.m_szRechnungsNr;
+      gutschrift.m_szRechnungsDatum       = rechnung.m_szDatum;
       gutschrift.m_wawiBestellNummer      = rechnung.m_bestellNummer;
       gutschrift.m_extBestellNummer       = rechnung.m_extBestellnummer;
       gutschrift.m_gutschriftNummer       = rechnung.m_gutschriftNummer;
@@ -792,12 +793,12 @@ bool CJTLSteuerDlg::DoAmazonSteuer(LPCSTR lpszFilePath, LPCSTR lpszPath, LPCSTR 
   CRechnung              rechnung;
   CGutschrift            gutschrift;
   CString                szDatumAmazon, szFaktor, rechnungsNummer, szError, szMessage, bestellNummer, bestellNummerExt, szRechnungsnummer, sandale;
-  CString                szBestellnummer, szPlatform, platform, szTyp, szUmst, sku;
+  CString                szBestellnummer, szPlatform, platform, szTyp, szUmst, sku, szOSS;
   LPCSTR                 lpszPlatform[] = PLATFORM_ARR;
 
   double                 summeTotal, dfPreis, dfUmst, dfGutDiffTotal, dfRechDiffTotal, dfWaehrungFaktor, betrag, betragEur;
   double                 sumReDe, sumReFr, sumReGb, sumGuDe, sumGuFr, sumGuGb, sumErDe, sumErFr, sumErGb;
-  bool                   fRechnungInDatum, fHasError, fLineError, fRechnung, fErstattung, fRefund;
+  bool                   fRechnungInDatum, fHasError, fLineError, fRechnung, fErstattung, fRefund, fOSS;
   long                   ctPreis, ctPreisCmp;
   int                    i, countErstattung, countRechnung, countGutschrift, countUnknown, countHeaderFldName, lineCount, countNeuRechnung,
                          nDatumTag, minTag, maxTag, anzahl, multiplikator, countHeaderFields, index;
@@ -810,6 +811,7 @@ bool CJTLSteuerDlg::DoAmazonSteuer(LPCSTR lpszFilePath, LPCSTR lpszPath, LPCSTR 
     SET_AS_INDEX(AS_INDEX_BESTELLNR_EXT)
     SET_AS_INDEX(AS_INDEX_SKU)
     SET_AS_INDEX(AS_INDEX_ANZAHL)
+    SET_AS_INDEX(AS_INDEX_TAX_REP_SCHEME)
     SET_AS_INDEX(AS_INDEX_UMST)
     SET_AS_INDEX(AS_INDEX_WAEHRUNG)
     SET_AS_INDEX(AS_INDEX_PREIS_BRUTTO)
@@ -890,6 +892,7 @@ bool CJTLSteuerDlg::DoAmazonSteuer(LPCSTR lpszFilePath, LPCSTR lpszPath, LPCSTR 
                 GET_AS_INDEX(AS_INDEX_BESTELLNR_EXT)
                 GET_AS_INDEX(AS_INDEX_SKU)
                 GET_AS_INDEX(AS_INDEX_ANZAHL)
+                GET_AS_INDEX(AS_INDEX_TAX_REP_SCHEME)
                 GET_AS_INDEX(AS_INDEX_UMST)
                 GET_AS_INDEX(AS_INDEX_WAEHRUNG)
                 GET_AS_INDEX(AS_INDEX_PREIS_BRUTTO)
@@ -930,6 +933,7 @@ bool CJTLSteuerDlg::DoAmazonSteuer(LPCSTR lpszFilePath, LPCSTR lpszPath, LPCSTR 
       }
       else
       {
+          szOSS = arrFields[_AS_INDEX_TAX_REP_SCHEME];
           szTyp = arrFields[_AS_INDEX_TYP];
           fErstattung = false; // szTyp == "REFUND";
           fRefund = szTyp == "REFUND";
@@ -952,6 +956,7 @@ bool CJTLSteuerDlg::DoAmazonSteuer(LPCSTR lpszFilePath, LPCSTR lpszPath, LPCSTR 
           }
 
           fRechnung = szTyp == "SHIPMENT";
+          fOSS      = szOSS == "VCS_EU_OSS";
 
           // Merke die Sandalen für die Statistik ...
           pMap          = NULL;
@@ -1058,6 +1063,9 @@ bool CJTLSteuerDlg::DoAmazonSteuer(LPCSTR lpszFilePath, LPCSTR lpszPath, LPCSTR 
                       if (atof(rechnung.m_szUmst) != atof(szUmst))
                           rechnung.m_szUmst = szUmst;
                   }
+                  
+                  rechnung.m_fAmazonTaxReport = true;
+                  rechnung.m_fAmazonOSS       = fOSS;
 
                   /*
                   if (szBestellnummer == "304-5723581-4861919")
@@ -1116,6 +1124,7 @@ bool CJTLSteuerDlg::DoAmazonSteuer(LPCSTR lpszFilePath, LPCSTR lpszPath, LPCSTR 
                           
                           
                       gutschrift.m_rechnungsNummer       = szRechnungsnummer;
+                      gutschrift.m_szRechnungsDatum      = rechnung.m_szDatum;
                       gutschrift.m_wawiBestellNummer     = rechnung.m_bestellNummer;
                       gutschrift.m_extBestellNummer      = rechnung.m_extBestellnummer;
                       gutschrift.m_gutschriftNummer      = rechnung.m_gutschriftNummer;
@@ -1139,6 +1148,10 @@ bool CJTLSteuerDlg::DoAmazonSteuer(LPCSTR lpszFilePath, LPCSTR lpszPath, LPCSTR 
 
                       // }
                       gutschrift.m_fErstattung           = fRefund;
+
+                      gutschrift.m_fAmazonTaxReport      = true;
+                      gutschrift.m_fAmazonOSS            = fOSS;
+
 
                       /*
                         pDatum  = NULL;
@@ -1479,11 +1492,25 @@ void CJTLSteuerDlg::StoreResults(void)
 }
 
 
-bool CJTLSteuerDlg::CheckOSS(LPCSTR lpszISO, LPCSTR lpszUmsatz)
+bool CJTLSteuerDlg::IsOSSDate(LPCSTR lpszDatum)
+{
+  // 01234567890
+  // tt.mm.jjjj
+  bool fReturn       = true;
+  bool fIsDatumValid = strlen(lpszDatum) == 10;
+  if (fIsDatumValid)
+  {
+    CString datum(lpszDatum);
+    fReturn = atoi(datum.Mid(6)) >= 2021 && atoi(datum.Mid(3, 2)) >= 7;
+  }
+  return fReturn;
+}
+
+bool CJTLSteuerDlg::CheckOSS(LPCSTR lpszISO, LPCSTR lpszUmsatz, LPCSTR lpszDatum)
 {
   CString szIso   = lpszISO;
   bool    fReturn = false;
-  if (szIso != "DE" && IsEU(szIso) )
+  if (szIso != "DE" && IsEU(szIso) && IsOSSDate(lpszDatum))
   {
     double fUmst = atof(lpszUmsatz);
     int    umst;
@@ -1491,12 +1518,41 @@ bool CJTLSteuerDlg::CheckOSS(LPCSTR lpszISO, LPCSTR lpszUmsatz)
         umst = (int)(100.0 * fUmst + 0.005);
     else
         umst = (int)(fUmst + 0.005);
-    fReturn = 19 != umst;
+    fReturn = 0 != umst && 19 != umst;
     if (!fReturn)
       fReturn = szIso == "RO" || szIso == "CY";
   }
   return fReturn;
 }
+
+bool CJTLSteuerDlg::CheckOSS(CGutschrift* pGutschrift) 
+{ 
+    bool fReturn = pGutschrift->m_szUmst.GetLength() > 0 && pGutschrift->m_ISO.GetLength() > 0 && CheckOSS(pGutschrift->m_ISO, pGutschrift->m_szUmst, pGutschrift->m_szDatum); 
+    if (pGutschrift->m_fAmazonTaxReport && fReturn != pGutschrift->m_fAmazonOSS)
+    {
+        CString szMessage;
+        CString szAmazonOSS = (LPCSTR)(pGutschrift->m_fAmazonOSS ? "Ja" : "Nein");
+        CString szInternOSS = (LPCSTR)(fReturn                   ? "Ja" : "Nein");
+        szMessage.Format("Widerspruch bei Rechnung bezüglich OSS-Zuordnung.\n\nRechnungsnummer: %s\nAmazon-Zuordnung OSS: %s\nInterne Zuordnung OSS: %s", pGutschrift->m_gutschriftNummer, szAmazonOSS, szInternOSS);
+        MessageBox(szMessage, "Gutschriften", MB_ICONEXCLAMATION | MB_OK);
+    }
+    return fReturn;
+}
+
+bool CJTLSteuerDlg::CheckOSS(CRechnung* pRechnung) 
+{ 
+    bool fReturn = pRechnung->m_szUmst.GetLength() > 0 && pRechnung->m_ISO.GetLength() > 0 && CheckOSS(pRechnung->m_ISO, pRechnung->m_szUmst, pRechnung->m_szDatum);
+    if (pRechnung->m_fAmazonTaxReport && fReturn != pRechnung->m_fAmazonOSS)
+    {
+        CString szMessage;
+        CString szAmazonOSS = (LPCSTR)(pRechnung->m_fAmazonOSS ? "Ja" : "Nein");
+        CString szInternOSS = (LPCSTR)(fReturn                 ? "Ja" : "Nein");
+        szMessage.Format("Widerspruch bei Rechnung bezüglich OSS-Zuordnung.\n\nRechnungsnummer: %s\nAmazon-Zuordnung OSS: %s\nInterne Zuordnung OSS: %s", pRechnung->m_szRechnungsNr, szAmazonOSS, szInternOSS);
+        MessageBox(szMessage, "Rechnungen", MB_ICONEXCLAMATION | MB_OK);
+    }
+    return fReturn;
+}
+
 
 void CJTLSteuerDlg::ErstelleEasyCashRechnungen(LPCSTR lpszPath, LPCSTR szFileTitle)
 {
@@ -1510,9 +1566,12 @@ void CJTLSteuerDlg::ErstelleEasyCashRechnungen(LPCSTR lpszPath, LPCSTR szFileTit
     CString    arrechnungPlatform[CRechnung::countPlatform];
     CString    szLine, szKonto;
     int        countPlatForm[CRechnung::countPlatform];
+    int        countOSSNetto[COSSIndex::pl_count],
+               countOSSUmst[COSSIndex::pl_count];
     double     arrRechnungTotal[CRechnung::countPlatform], fUmst;
 
-    CString    ossEinnahmenNetto, ossEinnahmenUmSt;
+    CString    ossEinnahmenNetto[COSSIndex::pl_count],
+               ossEinnahmenUmst[COSSIndex::pl_count];
 
     CRechnung* pRechnung;
     int        i, j, indexPlatform, countPl, tag;
@@ -1536,8 +1595,14 @@ void CJTLSteuerDlg::ErstelleEasyCashRechnungen(LPCSTR lpszPath, LPCSTR szFileTit
         arrechnungPlatform[i] = szLine;
         arrRechnungTotal[i] = 0;
     }
-    ossEinnahmenNetto = szLine;
-    ossEinnahmenUmSt  = szLine;
+    
+    for (i = 0; i < COSSIndex::pl_count; i++)
+    {
+      ossEinnahmenNetto[i] = szLine;
+      ossEinnahmenUmst[i]  = szLine;
+      countOSSNetto[i]     = 0;
+      countOSSUmst[i]      = 0;
+    }
 
     for (CMapRechnung::CPair* pCurVal = m_mapRechnung.PGetFirstAssoc(); pCurVal != NULL; pCurVal = m_mapRechnung.PGetNextAssoc(pCurVal))
     {
@@ -1550,10 +1615,11 @@ void CJTLSteuerDlg::ErstelleEasyCashRechnungen(LPCSTR lpszPath, LPCSTR szFileTit
         arrRechnungen[indexPlatform].Add({ pCurVal->key, SortKey });
     }
 
+    COSSIndex ossIndex;
     CRechnung rech;
     double    dfNetto, dfUmst;
     CString   szText, zahlUmst, zahlFaktor;
-    int       umSt;
+    int       umSt, indexOSS;
 
     for (i = 0; i < CRechnung::countPlatform; i++)
     {
@@ -1584,11 +1650,35 @@ void CJTLSteuerDlg::ErstelleEasyCashRechnungen(LPCSTR lpszPath, LPCSTR szFileTit
                     {
                         dfNetto = pRechnung->m_dfBetragRechnung;
                         dfUmst  = 0;
-
+                        
                     }
-                    szKonto = KONTO_OSS_EINNAHMEN_NETTO;
+                    
+                    // szKonto = KONTO_OSS_EINNAHMEN_NETTO;
+
+                    switch (i)
+                    {
+                    case CRechnung::Amazon_DE:
+                      indexOSS = COSSIndex::pl_amazonDE;
+                    break;
+                    case CRechnung::Amazon_Fr:
+                      indexOSS = COSSIndex::pl_amazonFR;
+                    break;
+                    case CRechnung::OnlineShop:
+                    case CRechnung::JTL_WaWi:
+                    case CRechnung::Haendler:
+                      indexOSS = COSSIndex::pl_webshop;
+                    break;
+                    case CRechnung::Amazon_GB:
+                    case CRechnung::unknown:
+                      indexOSS = COSSIndex::pl_amazonRest;
+                    break;
+                    }
+
+                    szKonto = ossIndex.GetTitle((COSSIndex::tagPlatform)indexOSS, COSSIndex::art_Rechnung, COSSIndex::betrag_Netto);
                     szLine.Format(ECT_RE_GU_FORM, pRechnung->m_szDatum, dfNetto, szText, pRechnung->m_szRechnungsNr, szKonto, "0", pRechnung->m_waehrungRechnung, pRechnung->m_faktor);
-                    ossEinnahmenNetto += szLine;
+                    
+                    ossEinnahmenNetto[indexOSS] += szLine;
+                    countOSSNetto[indexOSS]     += 1;
 
                     if (0 != umSt)
                     {
@@ -1598,9 +1688,11 @@ void CJTLSteuerDlg::ErstelleEasyCashRechnungen(LPCSTR lpszPath, LPCSTR szFileTit
                         zahlFaktor.Format("%1.6f", pRechnung->m_faktor);
                         zahlFaktor.Replace(".", ",");
                         
-                        szKonto = KONTO_OSS_EINNAHMEN_UMST;
+                        // szKonto = KONTO_OSS_EINNAHMEN_UMST;
+                        szKonto = ossIndex.GetTitle((COSSIndex::tagPlatform)indexOSS, COSSIndex::art_Rechnung, COSSIndex::betrag_Umst);
                         szLine.Format(ECT_RE_GU_FORM_EXCEL, pRechnung->m_szDatum, zahlUmst, szText, pRechnung->m_szRechnungsNr, "0", pRechnung->m_szUmst, pRechnung->m_waehrungRechnung, zahlFaktor);
-                        ossEinnahmenUmSt += szLine;
+                        ossEinnahmenUmst[indexOSS] += szLine;
+                        countOSSUmst[indexOSS]     += 1;
                     }
 
                 }
@@ -1671,6 +1763,35 @@ void CJTLSteuerDlg::ErstelleEasyCashRechnungen(LPCSTR lpszPath, LPCSTR szFileTit
 
     
     // Nun noch die OSS-Rechnungen ..
+    CString szFilePath;
+    for (i = 0; i < COSSIndex::pl_count; i++)
+    {
+      if (countOSSNetto[i])
+      {
+        szFileName = ossIndex.GetFileTitle((COSSIndex::tagPlatform)i, COSSIndex::art_Rechnung, COSSIndex::betrag_Netto);
+        szFilePath.Format("%s\\%s", lpszPath, szFileName);
+        length = ossEinnahmenNetto[i].GetLength();
+        if (fl.Open(szFileName, CFile::modeCreate | CFile::modeWrite))
+        {
+          fl.Write((LPCSTR)ossEinnahmenNetto[i], length);
+          fl.Close();
+        }
+      }
+
+      if (countOSSUmst[i])
+      {
+        szFileName = ossIndex.GetFileTitle((COSSIndex::tagPlatform)i, COSSIndex::art_Rechnung, COSSIndex::betrag_Umst);
+        szFilePath.Format("%s\\%s", lpszPath, szFileName);
+        length = ossEinnahmenUmst[i].GetLength();
+        if (fl.Open(szFileName, CFile::modeCreate | CFile::modeWrite))
+        {
+          fl.Write((LPCSTR)ossEinnahmenUmst[i], length);
+          fl.Close();
+        }
+      }
+    }
+
+    /*
     szFileName.Format("%s\\%s_OSS_Rechnung_Netto.csv", lpszPath, szTitle);
     length = ossEinnahmenNetto.GetLength();
     if (fl.Open(szFileName, CFile::modeCreate | CFile::modeWrite))
@@ -1686,7 +1807,7 @@ void CJTLSteuerDlg::ErstelleEasyCashRechnungen(LPCSTR lpszPath, LPCSTR szFileTit
         fl.Write((LPCSTR)ossEinnahmenUmSt, length);
         fl.Close();
     }
-
+    */
 
 }
 
@@ -1782,7 +1903,13 @@ void CJTLSteuerDlg::ErstelleEasyCashGutschriften(LPCSTR lpszPath, LPCSTR szFileT
     double       fUmst;
     long         length;
 
-    CString      ossGutschriftNetto, ossGutschriftUmSt;
+    // CString      ossGutschriftNetto, ossGutschriftUmSt;
+    CString      ossGutschriftNetto[COSSIndex::pl_count],
+                 ossGutschriftUmst[COSSIndex::pl_count];
+
+    int          countGutschriftNetto[COSSIndex::pl_count],
+                 countGutschriftUmst[COSSIndex::pl_count];
+
 
     mapPlatform["Amazon.de"]    = CRechnung::Amazon_DE;
     mapPlatform["Amazon.co.uk"] = CRechnung::Amazon_GB;
@@ -1800,8 +1927,13 @@ void CJTLSteuerDlg::ErstelleEasyCashGutschriften(LPCSTR lpszPath, LPCSTR szFileT
         arrGutschriftTotal[i] = 0;
     }
 
-    ossGutschriftNetto = szLine;
-    ossGutschriftUmSt  = szLine;
+    for (i = 0; i < COSSIndex::pl_count; i++)
+    {
+      ossGutschriftNetto[i]   = szLine;
+      ossGutschriftUmst[i]    = szLine;
+      countGutschriftNetto[i] = 0;
+      countGutschriftUmst[i]  = 0;
+    }
 
     for (CMapGutschrift::CPair* pCurVal = m_mapGutschrift.PGetFirstAssoc(); pCurVal != NULL; pCurVal = m_mapGutschrift.PGetNextAssoc(pCurVal))
     {
@@ -1812,9 +1944,10 @@ void CJTLSteuerDlg::ErstelleEasyCashGutschriften(LPCSTR lpszPath, LPCSTR szFileT
     }
 
     CGutschrift gut;
-    double    dfNetto, dfUmst;
-    CString   szText, zahlUmst, zahlFaktor;;
-    int       umSt;
+    COSSIndex   ossIndex;
+    double      dfNetto, dfUmst;
+    CString     szText, zahlUmst, zahlFaktor;;
+    int         umSt, indexOSS;
 
     for (i = 0; i < CRechnung::countPlatform; i++)
     {
@@ -1853,9 +1986,33 @@ void CJTLSteuerDlg::ErstelleEasyCashGutschriften(LPCSTR lpszPath, LPCSTR szFileT
                             dfUmst = 0;
 
                         }
-                        szKonto = KONTO_OSS_GUTSCHRIFTEN_NETTO;
+                        
+                        // szKonto = KONTO_OSS_GUTSCHRIFTEN_NETTO;
+
+                        switch (i)
+                        {
+                        case CRechnung::Amazon_DE:
+                          indexOSS = COSSIndex::pl_amazonDE;
+                        break;
+                        case CRechnung::Amazon_Fr:
+                          indexOSS = COSSIndex::pl_amazonFR;
+                        break;
+                        case CRechnung::OnlineShop:
+                        case CRechnung::JTL_WaWi:
+                        case CRechnung::Haendler:
+                          indexOSS = COSSIndex::pl_webshop;
+                        break;
+                        case CRechnung::Amazon_GB:
+                        case CRechnung::unknown:
+                          indexOSS = COSSIndex::pl_amazonRest;
+                        break;
+                        }
+
+                        szKonto = ossIndex.GetTitle((COSSIndex::tagPlatform)indexOSS, COSSIndex::art_Gutschrift, COSSIndex::betrag_Netto);
+
                         szLine.Format(ECT_RE_GU_FORM, pGutschrift->m_szDatum, dfNetto, szText, pGutschrift->m_gutschriftNummer, szKonto, "0.00", pGutschrift->m_waehrungGutschrift, pGutschrift->m_faktorRechnung);
-                        ossGutschriftNetto += szLine;
+                        ossGutschriftNetto[indexOSS]   += szLine;
+                        countGutschriftNetto[indexOSS] += 1;
 
                         if (0 != umSt)
                         {
@@ -1865,9 +2022,11 @@ void CJTLSteuerDlg::ErstelleEasyCashGutschriften(LPCSTR lpszPath, LPCSTR szFileT
                             zahlFaktor.Format("%1.6f", pGutschrift->m_faktorRechnung);
                             zahlFaktor.Replace(".", ",");
 
-                            szKonto = KONTO_OSS_GUTSCHRIFTEN_UMST;
+                            // szKonto = KONTO_OSS_GUTSCHRIFTEN_UMST;
+                            szKonto = ossIndex.GetTitle((COSSIndex::tagPlatform)indexOSS, COSSIndex::art_Gutschrift, COSSIndex::betrag_Umst);
                             szLine.Format(ECT_RE_GU_FORM_EXCEL, pGutschrift->m_szDatum, zahlUmst, szText, pGutschrift->m_gutschriftNummer, szKonto, "0,00", pGutschrift->m_waehrungGutschrift, zahlFaktor);
-                            ossGutschriftUmSt += szLine;
+                            ossGutschriftUmst[indexOSS]   += szLine;
+                            countGutschriftUmst[indexOSS] += 1;
                         }
 
                     }
@@ -1934,6 +2093,35 @@ void CJTLSteuerDlg::ErstelleEasyCashGutschriften(LPCSTR lpszPath, LPCSTR szFileT
     }
 
     // Nun noch die OSS-Gutschriften ..
+    CString szFilePath;
+    for (i = 0; i < COSSIndex::pl_count; i++)
+    {
+      if (countGutschriftNetto[i])
+      {
+        szFileName = ossIndex.GetFileTitle((COSSIndex::tagPlatform)i, COSSIndex::art_Gutschrift, COSSIndex::betrag_Netto);
+        szFilePath.Format("%s\\%s", lpszPath, szFileName);
+        length = ossGutschriftNetto[i].GetLength();
+        if (fl.Open(szFileName, CFile::modeCreate | CFile::modeWrite))
+        {
+          fl.Write((LPCSTR)ossGutschriftNetto[i], length);
+          fl.Close();
+        }
+      }
+
+      if (countGutschriftUmst[i])
+      {
+        szFileName = ossIndex.GetFileTitle((COSSIndex::tagPlatform)i, COSSIndex::art_Gutschrift, COSSIndex::betrag_Umst);
+        szFilePath.Format("%s\\%s", lpszPath, szFileName);
+        length = ossGutschriftUmst[i].GetLength();
+        if (fl.Open(szFileName, CFile::modeCreate | CFile::modeWrite))
+        {
+          fl.Write((LPCSTR)ossGutschriftUmst[i], length);
+          fl.Close();
+        }
+      }
+    }
+
+    /*
     szFileName.Format("%s\\%s_OSS_Gutschriften_Netto.csv", lpszPath, szTitle);
     length = ossGutschriftNetto.GetLength();
     if (fl.Open(szFileName, CFile::modeCreate | CFile::modeWrite))
@@ -1949,6 +2137,7 @@ void CJTLSteuerDlg::ErstelleEasyCashGutschriften(LPCSTR lpszPath, LPCSTR szFileT
         fl.Write((LPCSTR)ossGutschriftUmSt, length);
         fl.Close();
     }
+    */
 
 }
 
@@ -1960,10 +2149,10 @@ void CJTLSteuerDlg::ErstelleEasyCashGutschriften(LPCSTR lpszPath, LPCSTR szFileT
 
 void CJTLSteuerDlg::ErstelleEasyCashKorrekturImport(LPCSTR lpszPath, LPCSTR szFlTitle)
 {
-    CRechnung     rech;
-    CString       szFormat, szDate, szLine, szRechnungsnummer, szFileName, szFileTitle, szUmst, szWaehrung;
-    long          ctAmazonGutschrift, ctPreisRechnung;
-    int           countExport, index, faktorVK, faktorNK;
+    CRechnung      rech;
+    CString        szFormat, szDate, szLine, szRechnungsnummer, szFileName, szFileTitle, szUmst, szWaehrung;
+    long           ctAmazonGutschrift, ctPreisRechnung;
+    int            i, countExport, index, faktorVK, faktorNK;
 
     LPCSTR         pszGutschriftPre[ECTK_COUNT_BUCHUNG] = ECTK_GUTSCHRIFT_PRE;
     LPCSTR         pszBuchungsArt[ECTK_COUNT_BUCHUNG]   = ECTK_BUCHUNGSART;
@@ -1977,13 +2166,16 @@ void CJTLSteuerDlg::ErstelleEasyCashKorrekturImport(LPCSTR lpszPath, LPCSTR szFl
     CString        szExportLinesErstattung[ECTK_COUNT_BUCHUNG];
     int            countErstattungLines[ECTK_COUNT_BUCHUNG];
 
-    CString        szKonto, ossRueckNetto, ossRueckUmSt;
+    CString        szKonto, ossRueckNetto[COSSIndex::pl_count], ossRueckUmst[COSSIndex::pl_count];
+    int            indexOSS, countRueckNetto[COSSIndex::pl_count], countRueckUmst[COSSIndex::pl_count];
+
     CFile          fl;
     long           length;
     
     CMap<CString, LPCSTR, int, int>  mapPlatform;
     CRechnung*                       pRechnung;
     CKeyArray                        arrRechnungen[CRechnung::countPlatform];
+    COSSIndex                        ossIndex;
     int                              indexPlatform, countPl, j;
 
     // Initialisierung
@@ -1998,15 +2190,20 @@ void CJTLSteuerDlg::ErstelleEasyCashKorrekturImport(LPCSTR lpszPath, LPCSTR szFl
         countErstattungLines[index]    = 0;
     }
 
-    ossRueckNetto = szLine;
-    ossRueckUmSt  = szLine;
-
     mapPlatform["Amazon.de"] = CRechnung::Amazon_DE;
     mapPlatform["Amazon.co.uk"] = CRechnung::Amazon_GB;
     mapPlatform["Amazon.fr"] = CRechnung::Amazon_Fr;
     mapPlatform["Onlineshop"] = CRechnung::OnlineShop;
     mapPlatform["JTL-Wawi"] = CRechnung::JTL_WaWi;
     mapPlatform["UnKnown"] = CRechnung::unknown;
+
+    for (i = 0; i < COSSIndex::pl_count; i++)
+    {
+      ossRueckNetto[i]   = szLine;
+      ossRueckUmst[i]    = szLine;
+      countRueckNetto[i] = 0;
+      countRueckUmst[i]  = 0;
+    }
 
     for (CMapRechnung::CPair* pCurVal = m_mapRechnung.PGetFirstAssoc(); pCurVal != NULL; pCurVal = m_mapRechnung.PGetNextAssoc(pCurVal))
     {
@@ -2086,15 +2283,41 @@ void CJTLSteuerDlg::ErstelleEasyCashKorrekturImport(LPCSTR lpszPath, LPCSTR szFl
                                     }
                                     
                                     nummer = ++countExport;
-                                    szKonto = KONTO_OSS_RUECK_NETTO;
+                                    
+                                    
+                                    // szKonto = KONTO_OSS_RUECK_NETTO;
+                                    
+                                    switch (index)
+                                    {
+                                      case CRechnung::Amazon_DE:
+                                        indexOSS = COSSIndex::pl_amazonDE;
+                                      break;
+                                      case CRechnung::Amazon_Fr:
+                                        indexOSS = COSSIndex::pl_amazonFR;
+                                      break;
+                                      case CRechnung::OnlineShop:
+                                      case CRechnung::JTL_WaWi:
+                                      case CRechnung::Haendler:
+                                        indexOSS = COSSIndex::pl_webshop;
+                                      break;
+                                      case CRechnung::Amazon_GB:
+                                      case CRechnung::unknown:
+                                        indexOSS = COSSIndex::pl_amazonRest;
+                                      break;
+                                    }
+
+                                    szKonto = ossIndex.GetTitle((COSSIndex::tagPlatform)indexOSS, COSSIndex::art_Ruecklaeufer, COSSIndex::betrag_Netto);
                                     szLine.Format(szFormat, rech.m_szDatum, -dfNetto / 100, DEZIMALTRENNER, dfNetto % 100, szText, pszGutschriftPre[index], nummer, szKonto, "0.00",szWaehrung,faktorVK, DEZIMALTRENNER, faktorNK,rech.m_szRechnungsNr, rech.m_extBestellnummer);
-                                    ossRueckNetto += szLine;
+                                    ossRueckNetto[index] += szLine;
+                                    countRueckNetto[i]   += 1;
 
                                     if (0 != umSt)
                                     {
-                                        szKonto = KONTO_OSS_RUECK_UMST;
+                                        // szKonto = KONTO_OSS_RUECK_UMST;
+                                        szKonto = ossIndex.GetTitle((COSSIndex::tagPlatform)indexOSS, COSSIndex::art_Ruecklaeufer, COSSIndex::betrag_Netto);
                                         szLine.Format(szFormat, rech.m_szDatum, -dfUmst / 100, DEZIMALTRENNER_EXCEL, dfUmst % 100, szText, pszGutschriftPre[index], nummer, szKonto, "0,00", szWaehrung, faktorVK, DEZIMALTRENNER_EXCEL, faktorNK, rech.m_szRechnungsNr, rech.m_extBestellnummer);
-                                        ossRueckUmSt += szLine;
+                                        ossRueckUmst[i]   += szLine;
+                                        countRueckUmst[i] += 1;
                                     }
 
                                 }
@@ -2117,7 +2340,6 @@ void CJTLSteuerDlg::ErstelleEasyCashKorrekturImport(LPCSTR lpszPath, LPCSTR szFl
             }
         }
     }
-
 
     /*
 
@@ -2241,6 +2463,35 @@ void CJTLSteuerDlg::ErstelleEasyCashKorrekturImport(LPCSTR lpszPath, LPCSTR szFl
     }
 
     // Nun noch die OSS-Rückbuchungen ..
+    CString szFilePath;
+    for (i = 0; i < COSSIndex::pl_count; i++)
+    {
+      if (countRueckNetto[i])
+      {
+        szFileName = ossIndex.GetFileTitle((COSSIndex::tagPlatform)i, COSSIndex::art_Ruecklaeufer, COSSIndex::betrag_Netto);
+        szFilePath.Format("%s\\%s", lpszPath, szFileName);
+        length = ossRueckNetto[i].GetLength();
+        if (fl.Open(szFileName, CFile::modeCreate | CFile::modeWrite))
+        {
+          fl.Write((LPCSTR)ossRueckNetto[i], length);
+          fl.Close();
+        }
+      }
+
+      if (countRueckUmst[i])
+      {
+        szFileName = ossIndex.GetFileTitle((COSSIndex::tagPlatform)i, COSSIndex::art_Ruecklaeufer, COSSIndex::betrag_Umst);
+        szFilePath.Format("%s\\%s", lpszPath, szFileName);
+        length = ossRueckUmst[i].GetLength();
+        if (fl.Open(szFileName, CFile::modeCreate | CFile::modeWrite))
+        {
+          fl.Write((LPCSTR)ossRueckUmst[i], length);
+          fl.Close();
+        }
+      }
+    }
+
+    /*
     szFileName.Format("%s\\%s_OSS_Rückläufer_Netto.csv", lpszPath, szFileTitle);
     length = ossRueckNetto.GetLength();
     if (fl.Open(szFileName, CFile::modeCreate | CFile::modeWrite))
@@ -2256,7 +2507,7 @@ void CJTLSteuerDlg::ErstelleEasyCashKorrekturImport(LPCSTR lpszPath, LPCSTR szFl
         fl.Write((LPCSTR)ossRueckUmSt, length);
         fl.Close();
     }
-
+    */
 
 
 }
@@ -2517,7 +2768,7 @@ void COSSData::AddLine(CRechnung* pRechnung, bool fAmazon)
     szUmst.Replace(".", ",");
     
  
-    szLine.Format(OSS_DATA_FORMAT, pRechnung->m_szDatum, pRechnung->m_szRechnungEmpf, pRechnung->m_szRechnungsNr, pRechnung->m_extBestellnummer, szBrutto, szNetto, szUmst, pRechnung->m_ISO, pRechnung->m_waehrungRechnung, pRechnung->m_szUmst, szKonto);
+    szLine.Format(OSS_DATA_FORMAT, pRechnung->m_szDatum, pRechnung->m_szRechnungEmpf, pRechnung->m_szRechnungsNr, pRechnung->m_extBestellnummer, szBrutto, szNetto, szUmst, pRechnung->m_ISO, pRechnung->m_waehrungRechnung, pRechnung->m_szUmst, szKonto, pRechnung->m_bestellNummer);
     m_szTotalLines += szLine;
 
     m_totalLines += 1;
@@ -2542,7 +2793,7 @@ void COSSData::AddLine(CGutschrift* pGutschrift)
 
     szKonto = "Gutschrift";
 
-    szLine.Format(OSS_DATA_FORMAT, pGutschrift->m_szDatum, pGutschrift->m_empfaenger, pGutschrift->m_gutschriftNummer, pGutschrift->m_extBestellNummer, szBrutto, szNetto, szUmst, pGutschrift->m_ISO, pGutschrift->m_waehrungGutschrift, pGutschrift->m_szUmst, szKonto);
+    szLine.Format(OSS_DATA_FORMAT, pGutschrift->m_szDatum, pGutschrift->m_empfaenger, pGutschrift->m_gutschriftNummer, pGutschrift->m_extBestellNummer, szBrutto, szNetto, szUmst, pGutschrift->m_ISO, pGutschrift->m_waehrungGutschrift, pGutschrift->m_szUmst, szKonto, pGutschrift->m_wawiBestellNummer);
     m_szTotalLines += szLine;
 
     m_totalLines += 1;
@@ -2576,3 +2827,73 @@ bool COSSData::WriteData(CDialog *pParent, LPCSTR lpszFilenname)
     
     return fReturn;
 }
+
+// --------------------------------------------
+
+COSSIndex::COSSIndex()
+{
+
+  CString platform[pl_count], art[art_count], frm[2], frmFileName[2], strBezeichnung;
+  int     indexPlatform, indexArt, indexBetrag;
+
+  platform[pl_amazonDE]     = "Amazon DE";
+  platform[pl_amazonFR]     = "Amazon FR";
+  platform[pl_amazonRest]   = "Amazon Rest";
+  platform[pl_webshop]      = "Webshop";
+  platform[pl_unknown]      = "Unknown";
+
+  art[art_Rechnung]         = "Rechnungen";
+  art[art_Gutschrift]       = "Gutschriften";
+  art[art_Ruecklaeufer]     = "Rückäufer";
+
+  frm[betrag_Netto]         = "%s %s EU ohne EU VAT Nummer";
+  frm[betrag_Umst]          = "UmSt %s %s EU ohne EU VAT Nummer";
+
+  frmFileName[betrag_Netto] = "OSS_%s_%s_Netto.csv";
+  frmFileName[betrag_Umst]  = "OSS_%s_%s_Umst.csv";
+
+  for (indexPlatform = 0; indexPlatform < pl_count; indexPlatform++)
+  {
+    for (indexArt = 0; indexArt < art_count; indexArt++)
+    {
+      for (indexBetrag = 0; indexBetrag < betrag_count; indexBetrag++)
+      {
+        // nummer = indexPlatform * pl_faktor + indexArt * art_faktor + indexBetrag * betrag_faktor;
+        strBezeichnung.Format(frm[indexBetrag], art[indexArt], platform[indexPlatform]);
+        m_mapTitle[GetInternNummer(indexPlatform, indexArt, indexBetrag)] = strBezeichnung;
+
+        strBezeichnung.Format(frmFileName[indexBetrag], art[indexArt], platform[indexPlatform]);
+        m_mapFileTitle[GetInternNummer(indexPlatform, indexArt, -1)] = strBezeichnung;
+      }
+    }
+  }
+
+}
+
+
+int COSSIndex::GetInternNummer(int indexPlatform, int indexArt, int indexBetrag)
+{
+  if (indexBetrag >= 0)
+    return indexPlatform * pl_faktor + indexArt * art_faktor + indexBetrag * betrag_faktor;
+  else
+    return indexPlatform * pl_faktor + indexArt * art_faktor;
+}
+
+
+CString COSSIndex::GetTitle(tagPlatform platform, tagArt art, tagBetrag betrag)
+{
+  CString szTitle = "";
+  int nummer = GetInternNummer(platform, art, betrag);
+  m_mapTitle.Lookup(nummer, szTitle);
+  return szTitle;
+}
+
+CString COSSIndex::GetFileTitle(tagPlatform platform, tagArt art, tagBetrag betrag)
+{
+  CString szTitle = "";
+  int nummer = GetInternNummer(platform, art, betrag);
+  m_mapFileTitle.Lookup(nummer, szTitle);
+  return szTitle;
+}
+
+

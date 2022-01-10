@@ -198,6 +198,7 @@
 #define AS_INDEX_ANZAHL              11    // Anzahl - Betrag bezieht sich auf die Gesamtsumme
 #define AS_INDEX_UMST                13
 #define AS_INDEX_WAEHRUNG            15    // EUR, GBP
+#define AS_INDEX_TAX_REP_SCHEME      18    // VCS_EU_OSS
 #define AS_INDEX_PREIS_BRUTTO        23
 #define AS_INDEX_PREIS_UMST          24
 #define AS_INDEX_PREIS_NETTO         25
@@ -277,6 +278,7 @@
 // #define ECT_GUTSCHRIFT_FORM   "\r\n\"Einnahmen";"04.03.2020";"-666.40";"Mareen Burk";"G2662";"Gutschriften (19%)";"19.00";"EUR";"1,00000000000000";"R7504";;"0";"0";
 #define ECT_HEADER_SUMMERY       "\"Buchungsart\";\"Anz. Rechn.\";\"Betrag Rechn\";\"Anz. Gutschr.\";\"Betrag Gutschr.\""
 
+/*
 #define KONTO_OSS_EINNAHMEN_NETTO    "Rechnungen EU ohne EU VAT Nummer"
 #define KONTO_OSS_EINNAHMEN_UMST     "UmSt Rechnungen EU ohne EU VAT Nummer"
 
@@ -285,6 +287,100 @@
 
 #define KONTO_OSS_RUECK_NETTO        "Rückläufer EU ohne EU VAT Nummer"
 #define KONTO_OSS_RUECK_UMST         "UmSt Rückläufer EU ohne EU VAT Nummer"
+
+// OSS - Amazon DE
+#define KONTO_OSS_EINNAHMEN_NETTO    "Rechnungen Amazon DE EU ohne EU VAT Nummer"
+#define KONTO_OSS_EINNAHMEN_UMST     "UmSt Rechnungen Amazon DE EU ohne EU VAT Nummer"
+
+#define KONTO_OSS_GUTSCHRIFTEN_NETTO "Gutschriften Amazon DE EU ohne EU VAT Nummer"
+#define KONTO_OSS_GUTSCHRIFTEN_UMST  "UmSt Gutschriften Amazon DE EU ohne EU VAT Nummer"
+
+#define KONTO_OSS_RUECK_NETTO        "Rückläufer Amazon DE EU ohne EU VAT Nummer"
+#define KONTO_OSS_RUECK_UMST         "UmSt Rückläufer Amazon DE EU ohne EU VAT Nummer"
+
+// OSS - Amazon FR
+
+#define KONTO_OSS_EINNAHMEN_NETTO    "Rechnungen Amazon FR EU ohne EU VAT Nummer"
+#define KONTO_OSS_EINNAHMEN_UMST     "UmSt Rechnungen Amazon FR EU ohne EU VAT Nummer"
+
+#define KONTO_OSS_GUTSCHRIFTEN_NETTO "Gutschriften Amazon FR EU ohne EU VAT Nummer"
+#define KONTO_OSS_GUTSCHRIFTEN_UMST  "UmSt Gutschriften Amazon FR EU ohne EU VAT Nummer"
+
+#define KONTO_OSS_RUECK_NETTO        "Rückläufer Amazon FR EU ohne EU VAT Nummer"
+#define KONTO_OSS_RUECK_UMST         "UmSt Rückläufer Amazon FR EU ohne EU VAT Nummer"
+
+// OSS Amazon Rest
+#define KONTO_OSS_EINNAHMEN_NETTO    "Rechnungen Amazon Rest EU ohne EU VAT Nummer"
+#define KONTO_OSS_EINNAHMEN_UMST     "UmSt Rechnungen Amazon Rest EU ohne EU VAT Nummer"
+
+#define KONTO_OSS_GUTSCHRIFTEN_NETTO "Gutschriften Amazon Rest EU ohne EU VAT Nummer"
+#define KONTO_OSS_GUTSCHRIFTEN_UMST  "UmSt Gutschriften Amazon Rest EU ohne EU VAT Nummer"
+
+#define KONTO_OSS_RUECK_NETTO        "Rückläufer Amazon Rest EU ohne EU VAT Nummer"
+#define KONTO_OSS_RUECK_UMST         "UmSt Rückläufer Amazon Rest EU ohne EU VAT Nummer"
+
+// OSS Webshop
+#define KONTO_OSS_EINNAHMEN_NETTO    "Rechnungen Webshop EU ohne EU VAT Nummer"
+#define KONTO_OSS_EINNAHMEN_UMST     "UmSt Rechnungen Webshop EU ohne EU VAT Nummer"
+
+#define KONTO_OSS_GUTSCHRIFTEN_NETTO "Gutschriften Webshop EU ohne EU VAT Nummer"
+#define KONTO_OSS_GUTSCHRIFTEN_UMST  "UmSt Gutschriften Webshop EU ohne EU VAT Nummer"
+*/
+
+class COSSIndex
+{
+  public:
+    enum tagPlatform
+    {
+      pl_amazonDE = 0,
+      pl_amazonFR = 1,
+      pl_amazonRest = 2,
+      pl_webshop = 3,
+      pl_unknown = 4,
+      pl_count = 5,
+      pl_faktor = 1
+    };
+
+    enum tagArt
+    {
+      art_Rechnung = 0,
+      art_Gutschrift = 1,
+      art_Ruecklaeufer = 2,
+      art_count = 3,
+      art_faktor = 10
+    };
+
+    enum tagBetrag
+    {
+      betrag_Netto = 0,
+      betrag_Umst = 1,
+      betrag_count = 2,
+      betrag_faktor = 100
+    };
+
+  public:
+    COSSIndex();
+
+  public:
+    int GetCount_Platform(void) { return pl_count; }
+    int GetCount_Art(void) { return art_count; }
+    int GetCount_Betrag(void) { return betrag_count; }
+
+  public:
+    CString GetTitle(tagPlatform platform, tagArt art, tagBetrag betrag);
+    CString GetFileTitle(tagPlatform platform, tagArt art, tagBetrag betrag);
+
+  protected:
+    int  GetInternNummer(int indexPlatform, int indexArt, int indexBetrag);
+
+  protected:
+    CMap<int, int, CString, LPCSTR> m_mapTitle;
+    CMap<int, int, CString, LPCSTR> m_mapFileTitle;
+
+};
+
+
+
 
 
 bool OrderRechnung(CString& szFirst, CString& szNext);
@@ -306,7 +402,7 @@ class CRechnung
         m_faktor = 1;              m_bestellNummer = ""; m_extBestellnummer = ""; m_dfBetragRechnung   = 0;     m_dfBetragRechnungKorr = 0;     m_waehrungRechnung     = "";    m_typ = unknown;                     m_gutschriftNummer            = "";    m_dfBetragGutschriftWawi = 0; 
         m_waehrungGutschrift = ""; m_platform = "";      m_szRechnungsNr = "";    m_fHasGutschriftWawi = false; m_fAmazonNeuRechnung   = false; m_fAmazonNeuGutschrift = false; m_fAmazonDiffBetragRechnung = false; m_fAmazonDiffBetragGutschrift = false; m_dfRechnungSumme    = 0;  m_dfGutschriftSumme = 0;
         m_dfBetragGutschriftOrg = 0; m_szRechnungEmpf = "", m_szDatum = ""; m_szUmst = "19.00";                 m_countGutschriftWawi  = 0; m_dfBetragGutschriftAmazon = 0;
-        m_countGutschriftAmazon = 0; m_fHasGutschriftAmazon = false; m_szDatumGutschriftAmazon = ""; m_dfKontrollSumme = 0; m_ISO = ""; m_dfAmazonKorrekturBetrag = 0;
+        m_countGutschriftAmazon = 0; m_fHasGutschriftAmazon = false; m_szDatumGutschriftAmazon = ""; m_dfKontrollSumme = 0; m_ISO = ""; m_dfAmazonKorrekturBetrag = 0; m_fAmazonOSS = false; m_fAmazonTaxReport = false;
     }
 
   public:
@@ -317,6 +413,9 @@ class CRechnung
     CString              m_waehrungRechnung;
     double               m_faktor;
     typRechnung          m_typ;
+    
+    bool                 m_fAmazonTaxReport;
+    bool                 m_fAmazonOSS;
     
     // Wawi
     CString              m_gutschriftNummer;            // Sollte so nicht genutzt werden
@@ -364,15 +463,17 @@ class CGutschrift
 
 public:
     CGutschrift()     { Reset(); }
-    void Reset(void) {m_wawiBestellNummer = "";      m_extBestellNummer   = ""; m_gutschriftNummer      = ""; m_szDatum            = ""; m_platform  = "";               m_typ               = CRechnung::unknown; 
-                      m_dfRechnungsBetrag = 0;       m_dfBetragGutschrift =  0; m_dfBetragGutschriftOrg =  0; m_waehrungGutschrift = ""; m_fAmazonNeuGutschrift = false; m_dfGutschriftSumme = 0; m_fAmazonDiffBetragGutschrift = false;
-                      m_empfaenger        = "";      m_szDatum1           = ""; m_szDatum2              = ""; m_szDatum3           = ""; m_dfBetrag1 = 0;  m_dfBetrag2 = 0;  m_dfBetrag3 = 0; m_countItem = 0;   
-                      m_szUmst            = "19.00"; m_faktor             =  1; m_faktorRechnung        =  0; m_fErstattung = false;     m_ISO = "";
+    void Reset(void) {m_wawiBestellNummer = "";      m_extBestellNummer   = "";    m_gutschriftNummer      = ""; m_szDatum            = "";     m_platform  = "";               m_typ               = CRechnung::unknown; 
+                      m_dfRechnungsBetrag = 0;       m_dfBetragGutschrift =  0;    m_dfBetragGutschriftOrg =  0; m_waehrungGutschrift = "";     m_fAmazonNeuGutschrift = false; m_dfGutschriftSumme = 0; m_fAmazonDiffBetragGutschrift = false;
+                      m_empfaenger        = "";      m_szDatum1           = "";    m_szDatum2              = ""; m_szDatum3           = "";     m_dfBetrag1 = 0;                m_dfBetrag2 = 0;         m_dfBetrag3 = 0; m_countItem = 0;   
+                      m_szUmst            = "19.00"; m_faktor             =  1;    m_faktorRechnung        =  0; m_fErstattung        = false;  m_ISO = "";                     m_szRechnungsDatum = "";
+                      m_fAmazonOSS        = false;   m_fAmazonTaxReport   = false;
                      }
     
 
 public:
     CString                 m_rechnungsNummer;
+    CString                 m_szRechnungsDatum;
     CString                 m_empfaenger;
     CString                 m_wawiBestellNummer;
     CString                 m_extBestellNummer;
@@ -404,10 +505,13 @@ public:
     double                  m_dfGutschriftSumme;
 
     bool                    m_fAmazonDiffBetragGutschrift;
+
+    bool                    m_fAmazonOSS;
+    bool                    m_fAmazonTaxReport;
 };
 
-#define OSS_DATA_HEADER  "\"Erstelldatum Rechnung\";\"Rechnungsempfänger\";\"Rechnungsnummer\";\"Externe Bestellnummer\";\"Betrag Brutto\";\"Betrag Netto\";\"Betrag UmSt.\";\"Land\";\"Währung\";\"Umsatsteuer-Satz\";\"Konto\""
-#define OSS_DATA_FORMAT  "\r\n\"%s\";\"%s\";\"%s\";\"%s\";\"%s\";\"%s\";\"%s\";\"%s\";\"%s\";\"%s\";\"%s\""
+#define OSS_DATA_HEADER  "\"Erstelldatum Rechnung\";\"Rechnungsempfänger\";\"Rechnungsnummer\";\"Externe Bestellnummer\";\"Betrag Brutto\";\"Betrag Netto\";\"Betrag UmSt.\";\"Land\";\"Währung\";\"Umsatsteuer-Satz\";\"Konto\";\"Bestellnummer\""
+#define OSS_DATA_FORMAT  "\r\n\"%s\";\"%s\";\"%s\";\"%s\";\"%s\";\"%s\";\"%s\";\"%s\";\"%s\";\"%s\";\"%s\";\"%s\""
 
 class COSSData
 {
@@ -500,10 +604,11 @@ public:
   
   void StoreAmazonAuswertung(CMapVerkaufInfo* pMapVerkauf, LPCSTR lpszPath);
 
-  bool CheckOSS(LPCSTR lpszISO, LPCSTR lpszUmsatz);
-  bool CheckOSS(CRechnung* pRechnung)                               { return pRechnung->m_szUmst.GetLength() > 0 && pRechnung->m_ISO.GetLength() > 0 && CheckOSS(pRechnung->m_ISO, pRechnung->m_szUmst);          }
-  bool CheckOSS(CGutschrift* pGutschrift)                           { return pGutschrift->m_szUmst.GetLength() > 0 && pGutschrift->m_ISO.GetLength() > 0 && CheckOSS(pGutschrift->m_ISO, pGutschrift->m_szUmst);  }
+  bool CheckOSS(LPCSTR lpszISO, LPCSTR lpszUmsatz, LPCSTR lpszDatum);
+  bool CheckOSS(CRechnung* pRechnung);                           // { return pRechnung->m_szUmst.GetLength() > 0 && pRechnung->m_ISO.GetLength() > 0 && CheckOSS(pRechnung->m_ISO, pRechnung->m_szUmst);          }
+  bool CheckOSS(CGutschrift* pGutschrift);                       // { return pGutschrift->m_szUmst.GetLength() > 0 && pGutschrift->m_ISO.GetLength() > 0 && CheckOSS(pGutschrift->m_ISO, pGutschrift->m_szUmst);  }
   bool IsEU(LPCSTR lpszISO)                                         { int val = 0; return m_mapEU.Lookup(lpszISO, val) ? true : false;                                                                            }
+  bool IsOSSDate(LPCSTR lpszDatum);
 
   CString GetDate(LPCSTR lpszData);
   void    DoSort(CKeyArray& pArray, COMPARE comp);

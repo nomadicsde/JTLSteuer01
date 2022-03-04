@@ -1498,10 +1498,10 @@ bool CJTLSteuerDlg::IsOSSDate(LPCSTR lpszDatum)
   // tt.mm.jjjj
   bool fReturn       = true;
   bool fIsDatumValid = strlen(lpszDatum) == 10;
-  if (fIsDatumValid)
+  if (fIsDatumValid)    
   {
     CString datum(lpszDatum);
-    fReturn = atoi(datum.Mid(6)) >= 2021 && atoi(datum.Mid(3, 2)) >= 7;
+    fReturn = atoi(datum.Mid(6)) >= 2022 || (atoi(datum.Mid(6)) >= 2021 && atoi(datum.Mid(3, 2)) >= 7);
   }
   return fReturn;
 }
@@ -1771,7 +1771,7 @@ void CJTLSteuerDlg::ErstelleEasyCashRechnungen(LPCSTR lpszPath, LPCSTR szFileTit
         szFileName = ossIndex.GetFileTitle((COSSIndex::tagPlatform)i, COSSIndex::art_Rechnung, COSSIndex::betrag_Netto);
         szFilePath.Format("%s\\%s", lpszPath, szFileName);
         length = ossEinnahmenNetto[i].GetLength();
-        if (fl.Open(szFileName, CFile::modeCreate | CFile::modeWrite))
+        if (fl.Open(szFilePath, CFile::modeCreate | CFile::modeWrite))
         {
           fl.Write((LPCSTR)ossEinnahmenNetto[i], length);
           fl.Close();
@@ -1783,7 +1783,7 @@ void CJTLSteuerDlg::ErstelleEasyCashRechnungen(LPCSTR lpszPath, LPCSTR szFileTit
         szFileName = ossIndex.GetFileTitle((COSSIndex::tagPlatform)i, COSSIndex::art_Rechnung, COSSIndex::betrag_Umst);
         szFilePath.Format("%s\\%s", lpszPath, szFileName);
         length = ossEinnahmenUmst[i].GetLength();
-        if (fl.Open(szFileName, CFile::modeCreate | CFile::modeWrite))
+        if (fl.Open(szFilePath, CFile::modeCreate | CFile::modeWrite))
         {
           fl.Write((LPCSTR)ossEinnahmenUmst[i], length);
           fl.Close();
@@ -2101,7 +2101,7 @@ void CJTLSteuerDlg::ErstelleEasyCashGutschriften(LPCSTR lpszPath, LPCSTR szFileT
         szFileName = ossIndex.GetFileTitle((COSSIndex::tagPlatform)i, COSSIndex::art_Gutschrift, COSSIndex::betrag_Netto);
         szFilePath.Format("%s\\%s", lpszPath, szFileName);
         length = ossGutschriftNetto[i].GetLength();
-        if (fl.Open(szFileName, CFile::modeCreate | CFile::modeWrite))
+        if (fl.Open(szFilePath, CFile::modeCreate | CFile::modeWrite))
         {
           fl.Write((LPCSTR)ossGutschriftNetto[i], length);
           fl.Close();
@@ -2113,7 +2113,7 @@ void CJTLSteuerDlg::ErstelleEasyCashGutschriften(LPCSTR lpszPath, LPCSTR szFileT
         szFileName = ossIndex.GetFileTitle((COSSIndex::tagPlatform)i, COSSIndex::art_Gutschrift, COSSIndex::betrag_Umst);
         szFilePath.Format("%s\\%s", lpszPath, szFileName);
         length = ossGutschriftUmst[i].GetLength();
-        if (fl.Open(szFileName, CFile::modeCreate | CFile::modeWrite))
+        if (fl.Open(szFilePath, CFile::modeCreate | CFile::modeWrite))
         {
           fl.Write((LPCSTR)ossGutschriftUmst[i], length);
           fl.Close();
@@ -2308,16 +2308,16 @@ void CJTLSteuerDlg::ErstelleEasyCashKorrekturImport(LPCSTR lpszPath, LPCSTR szFl
 
                                     szKonto = ossIndex.GetTitle((COSSIndex::tagPlatform)indexOSS, COSSIndex::art_Ruecklaeufer, COSSIndex::betrag_Netto);
                                     szLine.Format(szFormat, rech.m_szDatum, -dfNetto / 100, DEZIMALTRENNER, dfNetto % 100, szText, pszGutschriftPre[index], nummer, szKonto, "0.00",szWaehrung,faktorVK, DEZIMALTRENNER, faktorNK,rech.m_szRechnungsNr, rech.m_extBestellnummer);
-                                    ossRueckNetto[index] += szLine;
-                                    countRueckNetto[i]   += 1;
+                                    ossRueckNetto[indexOSS] += szLine;
+                                    countRueckNetto[indexOSS]   += 1;
 
                                     if (0 != umSt)
                                     {
                                         // szKonto = KONTO_OSS_RUECK_UMST;
                                         szKonto = ossIndex.GetTitle((COSSIndex::tagPlatform)indexOSS, COSSIndex::art_Ruecklaeufer, COSSIndex::betrag_Netto);
                                         szLine.Format(szFormat, rech.m_szDatum, -dfUmst / 100, DEZIMALTRENNER_EXCEL, dfUmst % 100, szText, pszGutschriftPre[index], nummer, szKonto, "0,00", szWaehrung, faktorVK, DEZIMALTRENNER_EXCEL, faktorNK, rech.m_szRechnungsNr, rech.m_extBestellnummer);
-                                        ossRueckUmst[i]   += szLine;
-                                        countRueckUmst[i] += 1;
+                                        ossRueckUmst[indexOSS]   += szLine;
+                                        countRueckUmst[indexOSS] += 1;
                                     }
 
                                 }
@@ -2471,7 +2471,7 @@ void CJTLSteuerDlg::ErstelleEasyCashKorrekturImport(LPCSTR lpszPath, LPCSTR szFl
         szFileName = ossIndex.GetFileTitle((COSSIndex::tagPlatform)i, COSSIndex::art_Ruecklaeufer, COSSIndex::betrag_Netto);
         szFilePath.Format("%s\\%s", lpszPath, szFileName);
         length = ossRueckNetto[i].GetLength();
-        if (fl.Open(szFileName, CFile::modeCreate | CFile::modeWrite))
+        if (fl.Open(szFilePath, CFile::modeCreate | CFile::modeWrite))
         {
           fl.Write((LPCSTR)ossRueckNetto[i], length);
           fl.Close();
@@ -2483,7 +2483,7 @@ void CJTLSteuerDlg::ErstelleEasyCashKorrekturImport(LPCSTR lpszPath, LPCSTR szFl
         szFileName = ossIndex.GetFileTitle((COSSIndex::tagPlatform)i, COSSIndex::art_Ruecklaeufer, COSSIndex::betrag_Umst);
         szFilePath.Format("%s\\%s", lpszPath, szFileName);
         length = ossRueckUmst[i].GetLength();
-        if (fl.Open(szFileName, CFile::modeCreate | CFile::modeWrite))
+        if (fl.Open(szFilePath, CFile::modeCreate | CFile::modeWrite))
         {
           fl.Write((LPCSTR)ossRueckUmst[i], length);
           fl.Close();
@@ -2863,7 +2863,7 @@ COSSIndex::COSSIndex()
         m_mapTitle[GetInternNummer(indexPlatform, indexArt, indexBetrag)] = strBezeichnung;
 
         strBezeichnung.Format(frmFileName[indexBetrag], art[indexArt], platform[indexPlatform]);
-        m_mapFileTitle[GetInternNummer(indexPlatform, indexArt, -1)] = strBezeichnung;
+        m_mapFileTitle[GetInternNummer(indexPlatform, indexArt, indexBetrag)] = strBezeichnung;
       }
     }
   }

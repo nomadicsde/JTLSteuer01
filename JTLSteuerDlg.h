@@ -4,6 +4,34 @@
 
 #pragma once
 
+#define POS_HEADER_FLD_NAME               \
+{                                         \
+  "Auftragsnummer",                       \
+  "Externe Belegnummer",                  \
+  "Datum Zahlungseingang",                \
+  "Kundennummer",                         \
+  "Kundenkategorie",                      \
+  "Zahlungsart",                          \
+  "Artikelnummer",                        \
+  "Menge",                                \
+  "Brutto-VK",                            \
+  "USt. in %",                            \
+  "Netto-VK (gesamt)"                     \
+}
+
+
+#define POS_INDEX_AUFTRAGS_NR             0
+#define POS_INDEX_EXTERN_NR               1
+#define POS_INDEX_DATUM                   2 
+#define POS_INDEX_KD_NR                   3
+#define POS_INDEX_KD_KATEGORIE            4
+#define POS_INDEX_ZAHLART                 5
+#define POS_INDEX_ARTIKEL_NR              6
+#define POS_INDEX_ARTIKEL_MENGE           7
+#define POS_INDEX_BRUTTO                  8
+#define POS_INDEX_UST_PROZ                9
+#define POS_INDEX_NETTO                  10
+
 
 #define RE_HEADER_FLD_NAME                \
 {                                         \
@@ -566,6 +594,18 @@ class CVerkaufInfo
 
 typedef CMap<CString, LPCSTR, CVerkaufInfo, CVerkaufInfo>  CMapVerkaufInfo;
 
+typedef struct tagPOSDATA
+{
+  CString szAuftragsnummer;
+  CString szDatum;
+  CString szKundenNummer;
+  int     nBruttonVK;
+  int     nNettoVK;
+  CString szUst;
+} POSDATA, * LPPOSDATA;
+
+typedef CMap<CString, LPCSTR, POSDATA, POSDATA> CMapPOSData;
+
 
 
 // CJTLSteuerDlg-Dialogfeld
@@ -574,7 +614,7 @@ class CJTLSteuerDlg : public CDialogEx
 // Konstruktion
 public:
 	CJTLSteuerDlg(CWnd* pParent = NULL);	// Standardkonstruktor
-    ~CJTLSteuerDlg()     { ResetMapGutschriftenWawi(); ResetMapGutschriftenAmazon();  ReadSaveData(true);  }
+ ~CJTLSteuerDlg()     { ResetMapGutschriftenWawi(); ResetMapGutschriftenAmazon();  ReadSaveData(true);  }
 
 // Dialogfelddaten
 	enum { IDD = IDD_JTLSTEUER_DIALOG };
@@ -585,14 +625,19 @@ public:
   bool ReadAmazon(void);
 
   bool DoReadRechnung(LPCSTR lpszFilePath, LPCSTR lpsPath, LPCSTR lpszName, bool fKunden, bool fReset);
+  bool DoReadPOS(LPCSTR lpszFilePath, LPCSTR lpsPath, LPCSTR lpszName);
   bool DoReadGutschriften(LPCSTR lpszFilePath, LPCSTR lpsPath, LPCSTR lpszName);
   bool DoAmazonSteuer(LPCSTR lpszFilePath, LPCSTR lpszPath, LPCSTR szFileTitle);
   void StoreResult(LPCSTR lpsPath, LPCSTR lpszName);
   void ErstelleEasyCashKorrekturImport(LPCSTR lpszPath, LPCSTR szFileTitle);
   void ErstelleTaxStatistik(LPCSTR lpszPath, LPCSTR szFileTitle);
   void ErstelleEasyCashRechnungen(LPCSTR lpszPath, LPCSTR szFileTitle);
+  void ErstelleEasyCashPOS(LPCSTR lpszPath, LPCSTR szFileTitle);
   void ErstelleEasyCashGutschriften(LPCSTR lpszPath, LPCSTR szFileTitle);
 
+  int  GetCentBetrag(CString szWert);
+  int  GetIntWert(CString szWert);
+  
   void SetButtons(void);
   void StoreResults(void);
   bool AddGutschriftZuRechnung(CGutschrift* pGutschrift, double* pBetrag);
@@ -626,6 +671,7 @@ protected:
 public:
   afx_msg void OnBnClickedRechnungen();
   afx_msg void OnBnClickedGutschriften();
+  afx_msg void OnBnPOS();
   afx_msg void OnBnAmazonTax();
   afx_msg void OnBnStartCalc();
 
@@ -635,6 +681,7 @@ protected:
   CMapGutschriftArray    m_mapArrRechnungGutschriftAmazon;  // ordnet Rechnungsnummer eine Gutschrift zu 
   CMapRechnung           m_mapRechnung;
   CMapRechnung           m_mapAll;
+  CMapPOSData            m_mapPOSData;
   CMapGutschrift         m_mapGutschrift;
   CStringArray           m_arrGuKorr;
   CMapStringToInt        m_monthMap;
@@ -660,6 +707,7 @@ public:
   bool m_fReadRechnungenHaendler;
   bool m_fReadGutschriften;
   bool m_fReadAmazon;
+  bool m_fReadPOS;
 
   CString m_storePath;
   CString m_storeTitle;

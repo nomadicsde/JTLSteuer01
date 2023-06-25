@@ -35,6 +35,7 @@ CJTLSteuerDlg::CJTLSteuerDlg(CWnd* pParent /*=NULL*/)
               , m_fReadRechnungen(false)
               , m_fReadRechnungenHaendler(false)
               , m_fReadAmazon(false)
+              , m_fReadPOS(false)
               , m_GutschriftNotFound(0)
               , m_GutschriftFound(0)
               , m_GutschriftExceedCount(0)
@@ -165,6 +166,7 @@ BEGIN_MESSAGE_MAP(CJTLSteuerDlg, CDialogEx)
     ON_BN_CLICKED(IDC_GUTSCHRIFTEN, &CJTLSteuerDlg::OnBnClickedGutschriften)
     ON_BN_CLICKED(IDCANCEL, &CJTLSteuerDlg::OnBnClickedCancel)
     ON_BN_CLICKED(IDC_AMAZON_TAX, &CJTLSteuerDlg::OnBnAmazonTax)
+    ON_BN_CLICKED(IDC_RECHNUNGEN_POS, &CJTLSteuerDlg::OnBnPOS)
     ON_BN_CLICKED(IDC_START_CALC, &CJTLSteuerDlg::OnBnStartCalc)
     ON_NOTIFY(DTN_DATETIMECHANGE, IDC_DATUM_VON, &CJTLSteuerDlg::OnDtnDatetimechangeDatumVon)
     ON_NOTIFY(DTN_DATETIMECHANGE, IDC_DATUM_BIS, &CJTLSteuerDlg::OnDtnDatetimechangeDatumBis)
@@ -245,6 +247,7 @@ void CJTLSteuerDlg::OnBnClickedRechnungen()
   }
 }
 
+
 void CJTLSteuerDlg::OnBnClickedRechnungenHaendler()
 {
     CFileDialog dlg(TRUE);
@@ -254,13 +257,29 @@ void CJTLSteuerDlg::OnBnClickedRechnungenHaendler()
         if (m_fReadRechnungenHaendler)
         {
             SetButtons();
-            GetDlgItem(IDC_GUTSCHRIFTEN)->SetFocus();
-            SetDefID(IDC_GUTSCHRIFTEN);
+            GetDlgItem(IDC_RECHNUNGEN_POS)->SetFocus();
+            SetDefID(IDC_RECHNUNGEN_POS);
             UpdateWindow();
         }
     }
 }
 
+void CJTLSteuerDlg::OnBnPOS()
+{
+  CFileDialog dlg(TRUE);
+  if (dlg.DoModal() == IDOK)
+    m_fReadPOS = DoReadPOS(dlg.GetPathName(), dlg.GetFolderPath(), dlg.GetFileTitle());
+  else
+    m_fReadPOS = true;
+
+  if (m_fReadPOS)
+  {
+    SetButtons();
+    GetDlgItem(IDC_GUTSCHRIFTEN)->SetFocus();
+    SetDefID(IDC_GUTSCHRIFTEN);
+    UpdateWindow();
+  }
+}
 
 void CJTLSteuerDlg::OnBnAmazonTax()
 {
@@ -353,6 +372,95 @@ bool CJTLSteuerDlg::ReadAmazon(void)
     return fReturn;
 }
 
+int CJTLSteuerDlg::GetCentBetrag(CString szWert)
+{
+  szWert.Replace(',', '.');
+  double df = atof(szWert);
+  double dl = df < 0 ? -0.005 : +0.005;
+  return (int)(100.0 * df + dl);
+}
+
+int CJTLSteuerDlg::GetIntWert(CString szWert)
+{
+  szWert.Replace(',', '.');
+  double df = atof(szWert);
+  double dl = df < 0 ? -0.005 : +0.005;
+  return (int)(df + dl);
+}
+
+
+bool CJTLSteuerDlg::DoReadPOS(LPCSTR lpszFilePath, LPCSTR lpsPath, LPCSTR lpszName)
+{
+   
+  CCSVFile     csv(lpszFilePath);
+  CStringArray arrFields;
+  POSDATA      posdata;
+  
+  CString      szDatum, szRechnungsNr;
+  LPCSTR       headerNameArr[] = POS_HEADER_FLD_NAME;
+  bool         fLineError      = false;
+   
+  int          i, lineCount, currentTag, minTag, maxTag, menge, sign;
+  int          countHeaderFldName;
+
+  countHeaderFldName = sizeof(headerNameArr) / sizeof(LPCSTR);
+
+  minTag = GetSimpleDay(m_dateVon);
+  maxTag = GetSimpleDay(m_dateBis);
+
+  m_mapPOSData.RemoveAll();
+  lineCount = 0;
+
+  while (!fLineError && csv.ReadData(arrFields))
+  {
+
+    fLineError = countHeaderFldName != arrFields.GetCount();
+    if (0 == lineCount++)
+    {
+      // Prüfe die erste Zeile
+      for (i = 0; i < countHeaderFldName && !fLineError; i++)
+        fLineError = arrFields[i] != headerNameArr[i];
+    }
+    else
+    {
+      if (!fLineError)
+      {
+        szDatum = arrFields[POS_INDEX_DATUM];
+        currentTag = GetSimpleDay(szDatum);
+
+        // Datums-Kontrolle
+        if (currentTag >= minTag && currentTag <= maxTag)
+        {
+          // POS-Rechnung ? 
+          szRechnungsNr = arrFields[POS_INDEX_EXTERN_NR];
+          if (szRechnungsNr.Left(3) == "RB-")
+          {
+            
+            if (!m_mapPOSData.Lookup(szRechnungsNr, posdata))
+            {
+              posdata.szAuftragsnummer = arrFields[POS_INDEX_AUFTRAGS_NR];
+              posdata.szDatum          = arrFields[POS_INDEX_DATUM];
+              posdata.szKundenNummer   = arrFields[POS_INDEX_KD_NR];
+              posdata.szUst            = arrFields[POS_INDEX_UST_PROZ];
+              posdata.nBruttonVK       = 0;
+              posdata.nNettoVK         = 0;
+            }
+
+            menge = GetIntWert(arrFields[POS_INDEX_ARTIKEL_MENGE]);
+            sign  = menge < 0 ? -1 : 1;
+            
+            posdata.nBruttonVK += (menge * GetCentBetrag(arrFields[POS_INDEX_BRUTTO]));
+            posdata.nNettoVK   += (        GetCentBetrag(arrFields[POS_INDEX_NETTO]));
+
+            m_mapPOSData[szRechnungsNr] = posdata;
+          }
+        }
+      }
+    }
+  }
+
+  return !fLineError;
+}
 
 bool CJTLSteuerDlg::DoReadRechnung(LPCSTR lpszFilePath, LPCSTR lpsPath, LPCSTR lpszName, bool fKunden, bool fReset)
 {
@@ -1457,6 +1565,7 @@ void CJTLSteuerDlg::StoreResults(void)
     StoreResult(m_storePath, m_storeTitle);
     ErstelleTaxStatistik(m_storePath, m_storeTitle);
     ErstelleEasyCashRechnungen(m_storePath, m_storeTitle);
+    ErstelleEasyCashPOS(m_storePath, m_storeTitle);
     ErstelleEasyCashGutschriften(m_storePath, m_storeTitle);
 
     szFilePath = m_storePath;
@@ -1553,6 +1662,46 @@ bool CJTLSteuerDlg::CheckOSS(CRechnung* pRechnung)
     return fReturn;
 }
 
+void CJTLSteuerDlg::ErstelleEasyCashPOS(LPCSTR lpszPath, LPCSTR szFileTitle)
+{
+  CString szTitle, szFileName, arrRechnungPOS, szLine;
+  CFile   fl;
+  int     lineCount;
+  long    length, lBrutto;
+
+  szTitle = szFileTitle;
+  szTitle.Replace(".csv", "");
+  
+  szFileName.Format("%s\\%s_Rechnung_POS.csv", lpszPath, szTitle);
+  
+  arrRechnungPOS = ECT_RECHNUNG_TITEL;
+  lineCount      = 0;
+  lBrutto        = 0;
+  
+  // "Buchungsart";"Erstelldatum Rechnung";"Gesamtbetrag Brutto (alle Ust.)";"RA Vorname RA Nachname";"Rechnungsnummer";"Konto";"USt.";"Währung";"Währungsfaktor"
+  for (CMapPOSData::CPair* pCurVal = m_mapPOSData.PGetFirstAssoc(); pCurVal != NULL; pCurVal = m_mapPOSData.PGetNextAssoc(pCurVal))
+  {
+    lBrutto += pCurVal->value.nBruttonVK;
+    szLine.Format("\r\n\"Einnahmen\";\"%s\";\"%3.2f\";\"%s\";\"%s\";\"Kasse\";\"%s\";\"EUR\";\"1\"",
+                   pCurVal->value.szDatum, (double)pCurVal->value.nBruttonVK / 100.0, pCurVal->value.szKundenNummer, pCurVal->key, pCurVal->value.szUst);
+    arrRechnungPOS += szLine;
+    lineCount      += 1;
+  }
+
+  
+  length = arrRechnungPOS.GetLength();
+
+  if (lineCount && fl.Open(szFileName, CFile::modeCreate | CFile::modeWrite))
+  {
+    fl.Write((LPCSTR)arrRechnungPOS, length);
+    fl.Close();
+
+    CString szMessage;
+    szMessage.Format("Gesamtwert der Kassen-Einnahmen: %3.2lf EUR", (double)lBrutto / 100.0);
+    MessageBox(szMessage, "Kasse", MB_OK);
+  }
+
+}
 
 void CJTLSteuerDlg::ErstelleEasyCashRechnungen(LPCSTR lpszPath, LPCSTR szFileTitle)
 {
@@ -2731,9 +2880,13 @@ void CJTLSteuerDlg::SetButtons()
 
     GetDlgItem(IDC_RECHNUNGEN)->EnableWindow(TRUE);
     GetDlgItem(IDC_RECHNUNGEN_HAENDLER)->EnableWindow(m_fReadRechnungen);
-    GetDlgItem(IDC_GUTSCHRIFTEN)->EnableWindow(m_fReadRechnungen && m_fReadRechnungenHaendler);
-    GetDlgItem(IDC_AMAZON_TAX)->EnableWindow(m_fReadRechnungen && m_fReadRechnungenHaendler && m_fReadGutschriften);
-    GetDlgItem(IDC_START_CALC)->EnableWindow(m_fReadRechnungen && m_fReadRechnungenHaendler && m_fReadGutschriften && m_fReadAmazon);
+    GetDlgItem(IDC_RECHNUNGEN_POS)->EnableWindow(m_fReadRechnungen && m_fReadRechnungenHaendler);
+
+    GetDlgItem(IDC_GUTSCHRIFTEN)->EnableWindow(m_fReadPOS && m_fReadRechnungen && m_fReadRechnungenHaendler);
+    GetDlgItem(IDC_AMAZON_TAX)->EnableWindow(m_fReadPOS && m_fReadRechnungen && m_fReadRechnungenHaendler && m_fReadGutschriften);
+
+    GetDlgItem(IDC_AMAZON_TAX)->EnableWindow(m_fReadPOS && m_fReadRechnungen && m_fReadRechnungenHaendler && m_fReadGutschriften);
+    GetDlgItem(IDC_START_CALC)->EnableWindow(m_fReadPOS && m_fReadRechnungen && m_fReadRechnungenHaendler && m_fReadGutschriften && m_fReadAmazon);
 }
 
 

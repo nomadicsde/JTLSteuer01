@@ -1696,12 +1696,12 @@ void CJTLSteuerDlg::ErstelleEasyCashPOS(LPCSTR lpszPath, LPCSTR szFileTitle)
     fSort = false;
     for (i = 0; i < countPos - 1; i++)
     {
-      fSort = arrPosData[i + 1].rbNummer < arrPosData[i].rbNummer;
-      if (fSort)
+      if (arrPosData[i + 1].rbNummer < arrPosData[i].rbNummer)
       {
         posSave         = arrPosData[i];
         arrPosData[i]   = arrPosData[i+1];
         arrPosData[i+1] = posSave;
+        fSort = true;
       }
     }
   }
@@ -1714,7 +1714,7 @@ void CJTLSteuerDlg::ErstelleEasyCashPOS(LPCSTR lpszPath, LPCSTR szFileTitle)
     lBrutto += arrPosData[i].nBruttonVK;
     szLine.Format("\r\n\"Einnahmen\";\"%s\";\"%3.2f\";\"%s\";\"%s\";\"Kasse\";\"%s\";\"EUR\";\"1\"",
       arrPosData[i].szDatum, (double)arrPosData[i].nBruttonVK / 100.0, arrPosData[i].szKundenNummer, szRBNummer, arrPosData[i].szUst);
-
+    arrRechnungPOS += szLine;
     /*
     lBrutto += pCurVal->value.nBruttonVK;
     szLine.Format("\r\n\"Einnahmen\";\"%s\";\"%3.2f\";\"%s\";\"%s\";\"Kasse\";\"%s\";\"EUR\";\"1\"",

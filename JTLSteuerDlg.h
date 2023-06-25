@@ -602,6 +602,7 @@ typedef struct tagPOSDATA
   int     nBruttonVK;
   int     nNettoVK;
   CString szUst;
+  int     rbNummer;
 } POSDATA, * LPPOSDATA;
 
 typedef CMap<CString, LPCSTR, POSDATA, POSDATA> CMapPOSData;

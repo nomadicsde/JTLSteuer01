@@ -436,12 +436,14 @@ bool CJTLSteuerDlg::DoReadPOS(LPCSTR lpszFilePath, LPCSTR lpsPath, LPCSTR lpszNa
           if (szRechnungsNr.Left(3) == "RB-")
           {
             
+
             if (!m_mapPOSData.Lookup(szRechnungsNr, posdata))
             {
               posdata.szAuftragsnummer = arrFields[POS_INDEX_AUFTRAGS_NR];
               posdata.szDatum          = arrFields[POS_INDEX_DATUM];
               posdata.szKundenNummer   = arrFields[POS_INDEX_KD_NR];
               posdata.szUst            = arrFields[POS_INDEX_UST_PROZ];
+              posdata.rbNummer         = atoi(szRechnungsNr.Mid(3));
               posdata.nBruttonVK       = 0;
               posdata.nNettoVK         = 0;
             }
@@ -1665,9 +1667,13 @@ bool CJTLSteuerDlg::CheckOSS(CRechnung* pRechnung)
 void CJTLSteuerDlg::ErstelleEasyCashPOS(LPCSTR lpszPath, LPCSTR szFileTitle)
 {
   CString szTitle, szFileName, arrRechnungPOS, szLine;
+  CString szRBNummer;
+  POSDATA posSave;
+  CArray <POSDATA, POSDATA> arrPosData;
   CFile   fl;
-  int     lineCount;
   long    length, lBrutto;
+  bool    fSort;
+  int     i, countPos, lineCount;
 
   szTitle = szFileTitle;
   szTitle.Replace(".csv", "");
@@ -1680,11 +1686,41 @@ void CJTLSteuerDlg::ErstelleEasyCashPOS(LPCSTR lpszPath, LPCSTR szFileTitle)
   
   // "Buchungsart";"Erstelldatum Rechnung";"Gesamtbetrag Brutto (alle Ust.)";"RA Vorname RA Nachname";"Rechnungsnummer";"Konto";"USt.";"Währung";"Währungsfaktor"
   for (CMapPOSData::CPair* pCurVal = m_mapPOSData.PGetFirstAssoc(); pCurVal != NULL; pCurVal = m_mapPOSData.PGetNextAssoc(pCurVal))
+    arrPosData.Add(pCurVal->value);
+
+  // Sortiere ...
+  countPos = arrPosData.GetCount();
+  fSort = true;
+  while (fSort)
   {
+    fSort = false;
+    for (i = 0; i < countPos - 1; i++)
+    {
+      fSort = arrPosData[i + 1].rbNummer < arrPosData[i].rbNummer;
+      if (fSort)
+      {
+        posSave         = arrPosData[i];
+        arrPosData[i]   = arrPosData[i+1];
+        arrPosData[i+1] = posSave;
+      }
+    }
+  }
+
+  // Ausgabe ...
+  for (i=0; i< countPos; i++)
+  {
+    
+    szRBNummer.Format("RB-%04d", arrPosData[i].rbNummer);
+    lBrutto += arrPosData[i].nBruttonVK;
+    szLine.Format("\r\n\"Einnahmen\";\"%s\";\"%3.2f\";\"%s\";\"%s\";\"Kasse\";\"%s\";\"EUR\";\"1\"",
+      arrPosData[i].szDatum, (double)arrPosData[i].nBruttonVK / 100.0, arrPosData[i].szKundenNummer, szRBNummer, arrPosData[i].szUst);
+
+    /*
     lBrutto += pCurVal->value.nBruttonVK;
     szLine.Format("\r\n\"Einnahmen\";\"%s\";\"%3.2f\";\"%s\";\"%s\";\"Kasse\";\"%s\";\"EUR\";\"1\"",
                    pCurVal->value.szDatum, (double)pCurVal->value.nBruttonVK / 100.0, pCurVal->value.szKundenNummer, pCurVal->key, pCurVal->value.szUst);
     arrRechnungPOS += szLine;
+    */
     lineCount      += 1;
   }
 

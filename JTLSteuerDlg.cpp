@@ -416,11 +416,11 @@ bool CJTLSteuerDlg::DoReadRechnung(LPCSTR lpszFilePath, LPCSTR lpsPath, LPCSTR l
         // Rechnungsbetrag
         if (!fKunden)
         {
-            rechnung.m_dfBetragRechnung = atof(arrFields[RE_INDEX_ZAHLUNGSBETRAG]);
+            rechnung.m_dfBetragRechnung = atof(arrFields[RE_INDEX_ZAHLUNGSBETRAG])/100.0;
             if (arrFields[RE_INDEX_ZAHLUNGSHINWEIS] == TEXT_SKONTOBUCHUNG)
             {
                 dfSkonto  = atof(arrFields[RE_INDEX_BETRAG]) * FAKTOR_SKONTO;
-                dfValue   = atof(arrFields[RE_INDEX_ZAHLUNGSBETRAG]);
+                dfValue   = atof(arrFields[RE_INDEX_ZAHLUNGSBETRAG]) / 100.0;
                 
                 fIsSkonto = 0 == dfValue || (fabs(dfSkonto - dfValue) / fabs(dfValue) <= 0.01);
                 if (fIsSkonto)

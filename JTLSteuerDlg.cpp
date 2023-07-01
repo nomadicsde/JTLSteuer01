@@ -532,7 +532,7 @@ bool CJTLSteuerDlg::DoReadRechnung(LPCSTR lpszFilePath, LPCSTR lpsPath, LPCSTR l
                 dfSkonto  = atof(arrFields[RE_INDEX_BETRAG]) * FAKTOR_SKONTO;
                 dfValue   = atof(arrFields[RE_INDEX_ZAHLUNGSBETRAG]) / 100.0;
                 
-                fIsSkonto = 0 == dfValue || (fabs(dfSkonto - dfValue) / fabs(dfValue) <= 0.01);
+                fIsSkonto = 0 == dfValue || ( (fabs(dfSkonto) - fabs(dfValue)) / fabs(dfValue) <= 0.01);
                 if (fIsSkonto)
                     continue;
                 else
